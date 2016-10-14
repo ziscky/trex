@@ -15,6 +15,7 @@ import (
 type Seeder struct {
 	ID       int
 	NumTasks int
+	NumPeers int
 	Running  bool
 	work     []string
 	stop     chan struct{}
@@ -42,7 +43,18 @@ func (seeder *Seeder) Start(flags *torrent.TorrentFlags) {
 		seeder.Running = false
 	}()
 
-	err := torrent.RunTorrents(flags, seeder.work, seeder.stop)
+	introspectionChan := make(chan int)
+	go func() {
+		for {
+			select {
+			case count := <-introspectionChan:
+				log.Println("Got peers:", count)
+				seeder.NumPeers = count
+			}
+		}
+	}()
+
+	err := torrent.RunTorrents(flags, seeder.work, seeder.stop, introspectionChan)
 	if err != nil {
 		log.Fatal("Could not run torrents", seeder.work, err)
 	}
@@ -55,8 +67,11 @@ func (seeder *Seeder) Stop() {
 }
 
 //Status gets all info about the seeder
-func (seeder *Seeder) Status() []string {
-	return seeder.work
+func (seeder *Seeder) Status() map[string]interface{} {
+	return map[string]interface{}{
+		"torrents": seeder.work,
+		"peers":    seeder.NumPeers,
+	}
 }
 
 //Clear clears a seed workers work load

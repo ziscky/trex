@@ -36,7 +36,6 @@ func (listener *Listener) Hash() string {
 	finfo, err := os.Stat(listener.File)
 	if err != nil {
 		log.Fatal("Listener not active, restart program:", err)
-		return ""
 	}
 	io.WriteString(hash, listener.File)
 	fmt.Fprintf(hash, "%v", finfo.Size())
